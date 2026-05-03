@@ -1,10 +1,17 @@
-
 export interface User {
   id: string;
   name: string;
   email: string;
-  password?: string;
   createdAt: string;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AppointmentTypeConfig {
@@ -30,6 +37,8 @@ export interface Appointment {
   notes: string;
   price: number;
   status?: string;
+  weight?: number;
+  height?: number;
 }
 
 export interface Patient {
@@ -48,7 +57,7 @@ export interface Patient {
 
 export enum TransactionType {
   INCOME = 'Entrada',
-  EXPENSE = 'Saída'
+  EXPENSE = 'Saída',
 }
 
 export interface Transaction {

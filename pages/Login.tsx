@@ -3,13 +3,18 @@ import { useNavigate, Link } from 'react-router-dom';
 import { StorageService } from '../services/storageService';
 import { CompanySettings } from '../types';
 import { supabase } from '../services/supabaseClient';
-import { Activity, Mail, Lock, LogIn, Users } from 'lucide-react';
+import { Mail, Lock, LogIn, Users } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: 'fisiocale', slogan: 'Prevenção e Tratamento da Dor' });
+  const [loading, setLoading] = useState(false);
+  const [companySettings, setCompanySettings] = useState<CompanySettings>({
+    name: 'fisiocale',
+    slogan: 'Prevenção e Tratamento da Dor',
+  });
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,17 +24,25 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+    setLoading(true);
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
 
+    setLoading(false);
+
     if (signInError) {
-      setError(signInError.message === 'Invalid login credentials' ? 'Email ou senha incorretos.' : signInError.message);
-    } else {
-      navigate('/');
+      setError(
+        signInError.message === 'Invalid login credentials'
+          ? 'Email ou senha incorretos.'
+          : signInError.message
+      );
+      return;
     }
+
+    navigate('/', { replace: true });
   };
 
   return (
@@ -42,15 +55,23 @@ const Login: React.FC = () => {
             ) : (
               <Users className="text-teal-400" size={40} />
             )}
-            <span className="text-4xl font-display font-medium tracking-tight text-teal-700 lowercase line-clamp-1">{companySettings.name}</span>
+
+            <span className="text-4xl font-display font-medium tracking-tight text-teal-700 lowercase line-clamp-1">
+              {companySettings.name}
+            </span>
           </div>
+
           {companySettings.slogan && (
-            <span className="text-[10px] text-fisiocale-text mt-1 tracking-widest uppercase font-medium line-clamp-1">{companySettings.slogan}</span>
+            <span className="text-[10px] text-fisiocale-text mt-1 tracking-widest uppercase font-medium line-clamp-1">
+              {companySettings.slogan}
+            </span>
           )}
         </div>
+
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900">
           Acesse sua conta
         </h2>
+
         <p className="mt-2 text-center text-sm text-slate-600">
           Ou{' '}
           <Link to="/register" className="font-medium text-teal-600 hover:text-teal-500">
@@ -67,17 +88,21 @@ const Login: React.FC = () => {
                 {error}
               </div>
             )}
+
             <div>
               <label className="block text-sm font-medium text-slate-700">
                 Email
               </label>
+
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-slate-400" />
                 </div>
+
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                   placeholder="seu@email.com"
                   value={email}
@@ -90,13 +115,16 @@ const Login: React.FC = () => {
               <label className="block text-sm font-medium text-slate-700">
                 Senha
               </label>
+
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-slate-400" />
                 </div>
+
                 <input
                   type="password"
                   required
+                  autoComplete="current-password"
                   className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
                   placeholder="••••••••"
                   value={password}
@@ -116,28 +144,17 @@ const Login: React.FC = () => {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 mb-3"
+                disabled={loading}
+                className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <LogIn className="w-4 h-4 mr-2" />
-                Entrar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const testUser = {
-                    id: 'test-admin-123',
-                    name: 'Usuário de Teste',
-                    email: 'teste@exemplo.com',
-                    createdAt: new Date().toISOString()
-                  };
-                  localStorage.setItem('mockTestUser', JSON.stringify(testUser));
-                  window.location.reload();
-                }}
-                className="w-full flex justify-center items-center py-2 px-4 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-              >
-                <Activity className="w-4 h-4 mr-2 text-teal-600" />
-                Login de Teste
+                {loading ? (
+                  'Entrando...'
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Entrar
+                  </>
+                )}
               </button>
             </div>
           </form>
