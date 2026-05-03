@@ -4,8 +4,23 @@ import { supabase } from './supabaseClient';
 // Mock Data Generators
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const INITIAL_PATIENTS: Patient[] = [];
-const INITIAL_APPOINTMENT_TYPES: AppointmentTypeConfig[] = [];
+const INITIAL_PATIENTS: Patient[] = [
+  { id: 'p1', name: 'Ana Silva', email: 'ana@example.com', phone: '11999999999', birthDate: '1990-05-15', createdAt: '2023-01-10', status: 'Ativo' },
+  { id: 'p2', name: 'Carlos Oliveira', email: 'carlos@example.com', phone: '11988888888', birthDate: '1985-10-20', createdAt: '2023-02-15', status: 'Ativo' },
+  { id: 'p3', name: 'Maria Souza', email: 'maria@example.com', phone: '11977777777', birthDate: '1995-03-08', createdAt: '2023-03-01', status: 'Inativo' },
+];
+
+const INITIAL_APPOINTMENT_TYPES: AppointmentTypeConfig[] = [
+  { id: 'at1', name: 'Tasks', color: '#e06666' },
+  { id: 'at2', name: 'Atendimentos', color: '#6fa8dc' },
+  { id: 'at3', name: 'Atendimentos Filantropia', color: '#f6b26b' },
+  { id: 'at4', name: 'Atendimentos Fixos', color: '#4a86e8' },
+  { id: 'at5', name: 'Atendimentos Luciana', color: '#8e7cc3' },
+  { id: 'at6', name: 'Cancelado', color: '#cc0000' },
+  { id: 'at7', name: 'Reuniões e Adm', color: '#f1c232' },
+  { id: 'at8', name: 'Sedila Pessoal', color: '#93c47d' },
+  { id: 'at9', name: 'Atendimento João', color: '#3f51b5' },
+];
 // ... other initials can be emptied out eventually, but keep them as fallback if you want
 const INITIAL_APPOINTMENT_STATUSES: AppointmentStatusConfig[] = [
   { id: 'as1', name: 'Agendado', color: '#3b82f6' },
@@ -13,12 +28,100 @@ const INITIAL_APPOINTMENT_STATUSES: AppointmentStatusConfig[] = [
   { id: 'as3', name: 'Cancelado', color: '#ef4444' },
   { id: 'as4', name: 'Faltou', color: '#991b1b' },
 ];
-const INITIAL_APPOINTMENTS: Appointment[] = [];
-const INITIAL_TRANSACTIONS: Transaction[] = [];
-const INITIAL_SERVICES: Service[] = [];
-const INITIAL_PROFESSIONALS: Professional[] = [];
-const INITIAL_WAITLIST: WaitlistItem[] = [];
-const INITIAL_CATEGORIES: FinancialCategory[] = [];
+const INITIAL_APPOINTMENTS: Appointment[] = [
+  { id: 'a1', patientId: 'p1', date: '2026-04-13', time: '09:00', type: 'Avaliação', notes: 'Queixa de dores lombares.', price: 200, status: 'Realizado' },
+  { id: 'a2', patientId: 'p1', date: '2026-04-14', time: '14:30', type: 'Acompanhamento', notes: 'Melhora parcial.', price: 150, status: 'Realizado' },
+  { id: 'a3', patientId: 'p2', date: '2026-04-15', time: '10:00', type: 'Consulta', notes: 'Check-up geral.', price: 250, status: 'Realizado' },
+];
+
+const INITIAL_TRANSACTIONS: Transaction[] = [
+  { id: 't1', description: 'Aluguel Consultório', amount: 1500, type: TransactionType.EXPENSE, date: '2023-10-05', category: 'Fixo' },
+  { id: 't2', description: 'Material de Escritório', amount: 200, type: TransactionType.EXPENSE, date: '2023-10-10', category: 'Variável' },
+  { id: 't3', description: 'Consultoria Externa', amount: 500, type: TransactionType.INCOME, date: '2023-10-12', category: 'Serviços' },
+];
+
+const INITIAL_SERVICES: Service[] = [
+  { id: 's1', name: 'Consulta Médica', description: 'Atendimento clínico geral', price: 250, duration: 30 },
+  { id: 's2', name: 'Avaliação Fisioterapêutica', description: 'Análise inicial e diagnóstico funcional', price: 200, duration: 60 },
+  { id: 's3', name: 'Sessão de Fisioterapia', description: 'Reabilitação e tratamento', price: 150, duration: 45 },
+];
+
+const INITIAL_PROFESSIONALS: Professional[] = [
+  { id: 'prof1', name: 'Dr. Roberto Santos', specialty: 'Ortopedista', email: 'roberto@clinic.com', phone: '11911111111', registrationNumber: 'CRM 123456', color: '#0ea5e9' },
+  { id: 'prof2', name: 'Dra. Camila Lima', specialty: 'Fisioterapeuta', email: 'camila@clinic.com', phone: '11922222222', registrationNumber: 'CREFITO 98765', color: '#8b5cf6' },
+];
+
+const INITIAL_WAITLIST: WaitlistItem[] = [
+  { id: 'w1', patientId: 'p1', type: 'Consulta', createdAt: '2023-10-20' },
+  { id: 'w2', patientId: 'p2', type: 'Acompanhamento', createdAt: '2023-10-21' }
+];
+
+const INITIAL_CATEGORIES: FinancialCategory[] = [
+  { id: 'c1', name: 'Atendimentos', type: TransactionType.INCOME },
+  { id: 'c2', name: 'Serviços', type: TransactionType.INCOME },
+  // Fixas RH
+  { id: 'c_rh_1', name: 'Fixas RH - Adiantamento', type: TransactionType.EXPENSE },
+  { id: 'c_rh_2', name: 'Fixas RH - Contabilidade Castro', type: TransactionType.EXPENSE },
+  { id: 'c_rh_3', name: 'Fixas RH - D. Fátima - diárias', type: TransactionType.EXPENSE },
+  { id: 'c_rh_4', name: 'Fixas RH - Honorários João', type: TransactionType.EXPENSE },
+  { id: 'c_rh_5', name: 'Fixas RH - Pró-labore - Sedila', type: TransactionType.EXPENSE },
+  { id: 'c_rh_6', name: 'Fixas RH - Salário Poliana', type: TransactionType.EXPENSE },
+  { id: 'c_rh_7', name: 'Fixas RH - Honorários Carol', type: TransactionType.EXPENSE },
+  // Fixas Estrutural
+  { id: 'c_est_1', name: 'Fixas Estrutural - Aluguel', type: TransactionType.EXPENSE },
+  { id: 'c_est_2', name: 'Fixas Estrutural - Condomínio', type: TransactionType.EXPENSE },
+  { id: 'c_est_3', name: 'Fixas Estrutural - Enel', type: TransactionType.EXPENSE },
+  { id: 'c_est_4', name: 'Fixas Estrutural - IPTU', type: TransactionType.EXPENSE },
+  { id: 'c_est_5', name: 'Fixas Estrutural - Seguros', type: TransactionType.EXPENSE },
+  { id: 'c_est_6', name: 'Fixas Estrutural - Sistemas', type: TransactionType.EXPENSE },
+  { id: 'c_est_7', name: 'Fixas Estrutural - Telefone/ Internet', type: TransactionType.EXPENSE },
+  // Fixas Impostos
+  { id: 'c_imp_1', name: 'Fixas Impostos - INSS', type: TransactionType.EXPENSE },
+  { id: 'c_imp_2', name: 'Fixas Impostos - IRPF', type: TransactionType.EXPENSE },
+  { id: 'c_imp_3', name: 'Fixas Impostos - Receita Federal - IRPF e INSS', type: TransactionType.EXPENSE },
+  { id: 'c_imp_4', name: 'Fixas Impostos - Simples Nacional', type: TransactionType.EXPENSE },
+  // V. Cotidiano
+  { id: 'c_cot_1', name: 'V. Cotidiano - Ambiente/ cheirinhos', type: TransactionType.EXPENSE },
+  { id: 'c_cot_2', name: 'V. Cotidiano - Biscoitos e frutas secas', type: TransactionType.EXPENSE },
+  { id: 'c_cot_3', name: 'V. Cotidiano - Brindes eventos', type: TransactionType.EXPENSE },
+  { id: 'c_cot_4', name: 'V. Cotidiano - Café cápsulas', type: TransactionType.EXPENSE },
+  { id: 'c_cot_5', name: 'V. Cotidiano - Chá cápsulas', type: TransactionType.EXPENSE },
+  { id: 'c_cot_6', name: 'V. Cotidiano - Decoração', type: TransactionType.EXPENSE },
+  { id: 'c_cot_7', name: 'V. Cotidiano - Equipamentos manutenção', type: TransactionType.EXPENSE },
+  { id: 'c_cot_8', name: 'V. Cotidiano - Equipamentos novos', type: TransactionType.EXPENSE },
+  { id: 'c_cot_9', name: 'V. Cotidiano - Estacionamento', type: TransactionType.EXPENSE },
+  { id: 'c_cot_10', name: 'V. Cotidiano - Higiene/ Lavabo', type: TransactionType.EXPENSE },
+  { id: 'c_cot_11', name: 'V. Cotidiano - Manutenções estrutural', type: TransactionType.EXPENSE },
+  { id: 'c_cot_12', name: 'V. Cotidiano - Material de Escritório', type: TransactionType.EXPENSE },
+  { id: 'c_cot_13', name: 'V. Cotidiano - Material de limpeza', type: TransactionType.EXPENSE },
+  { id: 'c_cot_14', name: 'V. Cotidiano - Mesa café - outros', type: TransactionType.EXPENSE },
+  { id: 'c_cot_15', name: 'V. Cotidiano - Mimos pacientes', type: TransactionType.EXPENSE },
+  { id: 'c_cot_16', name: 'V. Cotidiano - Papel de maca', type: TransactionType.EXPENSE },
+  { id: 'c_cot_17', name: 'V. Cotidiano - Sala de evento', type: TransactionType.EXPENSE },
+  // V. Cursos Técnicos
+  { id: 'c_cur_1', name: 'V. Cursos Técnicos - Congresso', type: TransactionType.EXPENSE },
+  { id: 'c_cur_2', name: 'V. Cursos Técnicos - Curso', type: TransactionType.EXPENSE },
+  { id: 'c_cur_3', name: 'V. Cursos Técnicos - Eventos', type: TransactionType.EXPENSE },
+  { id: 'c_cur_4', name: 'V. Cursos Técnicos - Mentoria', type: TransactionType.EXPENSE },
+  // V. Marketing
+  { id: 'c_mkt_1', name: 'V. Marketing - Eletromídia', type: TransactionType.EXPENSE },
+  { id: 'c_mkt_2', name: 'V. Marketing - Eventos Fisiocale', type: TransactionType.EXPENSE },
+  { id: 'c_mkt_3', name: 'V. Marketing - Google', type: TransactionType.EXPENSE },
+  { id: 'c_mkt_4', name: 'V. Marketing - Instagram', type: TransactionType.EXPENSE },
+  { id: 'c_mkt_5', name: 'V. Marketing - Networking almoço/ café', type: TransactionType.EXPENSE },
+  // V. Funcionários
+  { id: 'c_fun_1', name: 'V. Funcionários - Almoço', type: TransactionType.EXPENSE },
+  { id: 'c_fun_2', name: 'V. Funcionários - Gratificações funcionários', type: TransactionType.EXPENSE },
+  { id: 'c_fun_3', name: 'V. Funcionários - Reunião Fora', type: TransactionType.EXPENSE },
+  // V. Impostos Taxas
+  { id: 'c_tax_1', name: 'V. Impostos Taxas - Crefito', type: TransactionType.EXPENSE },
+  { id: 'c_tax_2', name: 'V. Impostos Taxas - Domínio/sítio web', type: TransactionType.EXPENSE },
+  { id: 'c_tax_3', name: 'V. Impostos Taxas - Juros', type: TransactionType.EXPENSE },
+  { id: 'c_tax_4', name: 'V. Impostos Taxas - Taxa de funcionamento de estabelecimento', type: TransactionType.EXPENSE },
+  { id: 'c_tax_5', name: 'V. Impostos Taxas - Taxas Bancárias', type: TransactionType.EXPENSE },
+  { id: 'c_tax_6', name: 'V. Impostos Taxas - Taxas da Maquininha', type: TransactionType.EXPENSE },
+  { id: 'c_tax_7', name: 'V. Impostos Taxas - Taxas diversas', type: TransactionType.EXPENSE },
+];
 
 // Helper to push to Supabase asynchronously without blocking UI
 const pushToSupabase = async (table: string, data: any) => {

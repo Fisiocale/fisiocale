@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storageService';
 import { Patient, Appointment, AppointmentTypeConfig, Service } from '../types';
-import { Search, Plus, User, Calendar, FileText, ChevronRight, X, Sparkles, AlertCircle, CheckCircle, TrendingUp, Edit2, ChevronDown, MessageCircle } from 'lucide-react';
-import { GeminiService } from '../services/geminiService';
+import { Search, Plus, User, Calendar, FileText, ChevronRight, X, AlertCircle, CheckCircle, TrendingUp, Edit2, ChevronDown, MessageCircle } from 'lucide-react';
 
 const getWhatsAppLink = (phone: string) => {
   if (!phone) return '#';
@@ -44,10 +43,6 @@ const Patients: React.FC = () => {
   const [apptServiceId, setApptServiceId] = useState('');
   const [apptNotes, setApptNotes] = useState('');
   const [apptPrice, setApptPrice] = useState('0');
-
-  // AI Summary
-  const [aiSummary, setAiSummary] = useState('');
-  const [loadingAi, setLoadingAi] = useState(false);
 
   useEffect(() => {
     refreshData();
@@ -181,17 +176,7 @@ const Patients: React.FC = () => {
   const handleSelectPatient = (p: Patient) => {
     setSelectedPatient(p);
     setView('detail');
-    setAiSummary('');
   };
-
-  const handleGenerateSummary = async () => {
-    if(!selectedPatient) return;
-    setLoadingAi(true);
-    const patientApps = appointments.filter(a => a.patientId === selectedPatient.id);
-    const summary = await GeminiService.getPatientSummary(selectedPatient, patientApps);
-    setAiSummary(summary);
-    setLoadingAi(false);
-  }
 
   // Helper to calculate patient status and value
   const getPatientMetrics = (patient: Patient) => {
@@ -494,21 +479,6 @@ const Patients: React.FC = () => {
            >
              <Plus size={20} /> <span>Novo Atendimento</span>
            </button>
-        </div>
-
-        {/* AI Summary Block */}
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 p-5 rounded-xl shadow-sm">
-           <div className="flex justify-between items-center mb-3">
-             <div className="flex items-center space-x-2 text-indigo-900 font-bold">
-               <Sparkles size={18} className="text-purple-600" /> <span>Análise Inteligente do Prontuário</span>
-             </div>
-             <button onClick={handleGenerateSummary} disabled={loadingAi} className="text-xs bg-white border border-indigo-200 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-50 font-medium disabled:opacity-50 transition-colors">
-               {loadingAi ? 'ANALISANDO...' : 'GERAR RESUMO IA'}
-             </button>
-           </div>
-           <p className="text-sm text-slate-700 leading-relaxed bg-white/50 p-3 rounded-lg border border-indigo-50/50">
-             {aiSummary || "Clique em 'Gerar Resumo IA' para analisar a evolução do peso, frequência e notas clínicas deste paciente automaticamente."}
-           </p>
         </div>
 
         {/* History Timeline */}

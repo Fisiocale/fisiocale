@@ -16,6 +16,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for mock test user first
+    const mockUserStr = localStorage.getItem('mockTestUser');
+    if (mockUserStr) {
+      const mockUser = JSON.parse(mockUserStr);
+      setUser(mockUser);
+      setLoading(false);
+      return;
+    }
+
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -52,7 +61,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     await supabase.auth.signOut();
-    localStorage.clear();
+    localStorage.removeItem('mockTestUser');
+    // localStorage.clear(); // Removido para não apagar os dados locais salvos anteriormente
     setUser(null);
   };
 

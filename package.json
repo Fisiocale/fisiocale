@@ -10,7 +10,6 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^1.40.0",
     "@supabase/supabase-js": "^2.105.1",
     "bcryptjs": "^3.0.3",
     "jspdf": "^4.2.1",

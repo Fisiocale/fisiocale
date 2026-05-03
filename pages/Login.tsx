@@ -116,10 +116,28 @@ const Login: React.FC = () => {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+                className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 mb-3"
               >
                 <LogIn className="w-4 h-4 mr-2" />
                 Entrar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const testUser = {
+                    id: 'test-admin-123',
+                    name: 'Usuário de Teste',
+                    email: 'teste@exemplo.com',
+                    createdAt: new Date().toISOString()
+                  };
+                  localStorage.setItem('mockTestUser', JSON.stringify(testUser));
+                  window.location.reload();
+                }}
+                className="w-full flex justify-center items-center py-2 px-4 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+              >
+                <Activity className="w-4 h-4 mr-2 text-teal-600" />
+                Login de Teste
               </button>
             </div>
           </form>
