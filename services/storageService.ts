@@ -1,14 +1,45 @@
-import { Patient, Appointment, Transaction, TransactionType, Service, Professional, Invoice, WaitlistItem, FinancialCategory, AppointmentTypeConfig, AppointmentStatusConfig, CompanySettings } from '../types';
+import {
+  Patient,
+  Appointment,
+  Transaction,
+  TransactionType,
+  Service,
+  Professional,
+  Invoice,
+  WaitlistItem,
+  FinancialCategory,
+  AppointmentTypeConfig,
+  AppointmentStatusConfig,
+  CompanySettings,
+} from '../types';
 import { supabase } from './supabaseClient';
 
-// Mock Data Generators
-const generateId = () => Math.random().toString(36).substr(2, 9);
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
 
-const INITIAL_PATIENTS: Patient[] = [
-  { id: 'p1', name: 'Ana Silva', email: 'ana@example.com', phone: '11999999999', birthDate: '1990-05-15', createdAt: '2023-01-10', status: 'Ativo' },
-  { id: 'p2', name: 'Carlos Oliveira', email: 'carlos@example.com', phone: '11988888888', birthDate: '1985-10-20', createdAt: '2023-02-15', status: 'Ativo' },
-  { id: 'p3', name: 'Maria Souza', email: 'maria@example.com', phone: '11977777777', birthDate: '1995-03-08', createdAt: '2023-03-01', status: 'Inativo' },
-];
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+};
+
+const safeParse = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch (error) {
+    console.warn(`Erro ao ler ${key} do localStorage:`, error);
+    return fallback;
+  }
+};
+
+const removeUserId = <T extends Record<string, any>>(item: T): Omit<T, 'user_id'> => {
+  const { user_id, ...cleanItem } = item;
+  return cleanItem;
+};
+
+const cleanRowsForLocalStorage = <T extends Record<string, any>>(rows: T[]) => {
+  return rows.map(removeUserId);
+};
 
 const INITIAL_APPOINTMENT_TYPES: AppointmentTypeConfig[] = [
   { id: 'at1', name: 'Tasks', color: '#e06666' },
@@ -21,45 +52,18 @@ const INITIAL_APPOINTMENT_TYPES: AppointmentTypeConfig[] = [
   { id: 'at8', name: 'Sedila Pessoal', color: '#93c47d' },
   { id: 'at9', name: 'Atendimento João', color: '#3f51b5' },
 ];
-// ... other initials can be emptied out eventually, but keep them as fallback if you want
+
 const INITIAL_APPOINTMENT_STATUSES: AppointmentStatusConfig[] = [
   { id: 'as1', name: 'Agendado', color: '#3b82f6' },
   { id: 'as2', name: 'Realizado', color: '#10b981' },
   { id: 'as3', name: 'Cancelado', color: '#ef4444' },
   { id: 'as4', name: 'Faltou', color: '#991b1b' },
 ];
-const INITIAL_APPOINTMENTS: Appointment[] = [
-  { id: 'a1', patientId: 'p1', date: '2026-04-13', time: '09:00', type: 'Avaliação', notes: 'Queixa de dores lombares.', price: 200, status: 'Realizado' },
-  { id: 'a2', patientId: 'p1', date: '2026-04-14', time: '14:30', type: 'Acompanhamento', notes: 'Melhora parcial.', price: 150, status: 'Realizado' },
-  { id: 'a3', patientId: 'p2', date: '2026-04-15', time: '10:00', type: 'Consulta', notes: 'Check-up geral.', price: 250, status: 'Realizado' },
-];
-
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  { id: 't1', description: 'Aluguel Consultório', amount: 1500, type: TransactionType.EXPENSE, date: '2023-10-05', category: 'Fixo' },
-  { id: 't2', description: 'Material de Escritório', amount: 200, type: TransactionType.EXPENSE, date: '2023-10-10', category: 'Variável' },
-  { id: 't3', description: 'Consultoria Externa', amount: 500, type: TransactionType.INCOME, date: '2023-10-12', category: 'Serviços' },
-];
-
-const INITIAL_SERVICES: Service[] = [
-  { id: 's1', name: 'Consulta Médica', description: 'Atendimento clínico geral', price: 250, duration: 30 },
-  { id: 's2', name: 'Avaliação Fisioterapêutica', description: 'Análise inicial e diagnóstico funcional', price: 200, duration: 60 },
-  { id: 's3', name: 'Sessão de Fisioterapia', description: 'Reabilitação e tratamento', price: 150, duration: 45 },
-];
-
-const INITIAL_PROFESSIONALS: Professional[] = [
-  { id: 'prof1', name: 'Dr. Roberto Santos', specialty: 'Ortopedista', email: 'roberto@clinic.com', phone: '11911111111', registrationNumber: 'CRM 123456', color: '#0ea5e9' },
-  { id: 'prof2', name: 'Dra. Camila Lima', specialty: 'Fisioterapeuta', email: 'camila@clinic.com', phone: '11922222222', registrationNumber: 'CREFITO 98765', color: '#8b5cf6' },
-];
-
-const INITIAL_WAITLIST: WaitlistItem[] = [
-  { id: 'w1', patientId: 'p1', type: 'Consulta', createdAt: '2023-10-20' },
-  { id: 'w2', patientId: 'p2', type: 'Acompanhamento', createdAt: '2023-10-21' }
-];
 
 const INITIAL_CATEGORIES: FinancialCategory[] = [
   { id: 'c1', name: 'Atendimentos', type: TransactionType.INCOME },
   { id: 'c2', name: 'Serviços', type: TransactionType.INCOME },
-  // Fixas RH
+
   { id: 'c_rh_1', name: 'Fixas RH - Adiantamento', type: TransactionType.EXPENSE },
   { id: 'c_rh_2', name: 'Fixas RH - Contabilidade Castro', type: TransactionType.EXPENSE },
   { id: 'c_rh_3', name: 'Fixas RH - D. Fátima - diárias', type: TransactionType.EXPENSE },
@@ -67,7 +71,7 @@ const INITIAL_CATEGORIES: FinancialCategory[] = [
   { id: 'c_rh_5', name: 'Fixas RH - Pró-labore - Sedila', type: TransactionType.EXPENSE },
   { id: 'c_rh_6', name: 'Fixas RH - Salário Poliana', type: TransactionType.EXPENSE },
   { id: 'c_rh_7', name: 'Fixas RH - Honorários Carol', type: TransactionType.EXPENSE },
-  // Fixas Estrutural
+
   { id: 'c_est_1', name: 'Fixas Estrutural - Aluguel', type: TransactionType.EXPENSE },
   { id: 'c_est_2', name: 'Fixas Estrutural - Condomínio', type: TransactionType.EXPENSE },
   { id: 'c_est_3', name: 'Fixas Estrutural - Enel', type: TransactionType.EXPENSE },
@@ -75,12 +79,12 @@ const INITIAL_CATEGORIES: FinancialCategory[] = [
   { id: 'c_est_5', name: 'Fixas Estrutural - Seguros', type: TransactionType.EXPENSE },
   { id: 'c_est_6', name: 'Fixas Estrutural - Sistemas', type: TransactionType.EXPENSE },
   { id: 'c_est_7', name: 'Fixas Estrutural - Telefone/ Internet', type: TransactionType.EXPENSE },
-  // Fixas Impostos
+
   { id: 'c_imp_1', name: 'Fixas Impostos - INSS', type: TransactionType.EXPENSE },
   { id: 'c_imp_2', name: 'Fixas Impostos - IRPF', type: TransactionType.EXPENSE },
   { id: 'c_imp_3', name: 'Fixas Impostos - Receita Federal - IRPF e INSS', type: TransactionType.EXPENSE },
   { id: 'c_imp_4', name: 'Fixas Impostos - Simples Nacional', type: TransactionType.EXPENSE },
-  // V. Cotidiano
+
   { id: 'c_cot_1', name: 'V. Cotidiano - Ambiente/ cheirinhos', type: TransactionType.EXPENSE },
   { id: 'c_cot_2', name: 'V. Cotidiano - Biscoitos e frutas secas', type: TransactionType.EXPENSE },
   { id: 'c_cot_3', name: 'V. Cotidiano - Brindes eventos', type: TransactionType.EXPENSE },
@@ -98,22 +102,22 @@ const INITIAL_CATEGORIES: FinancialCategory[] = [
   { id: 'c_cot_15', name: 'V. Cotidiano - Mimos pacientes', type: TransactionType.EXPENSE },
   { id: 'c_cot_16', name: 'V. Cotidiano - Papel de maca', type: TransactionType.EXPENSE },
   { id: 'c_cot_17', name: 'V. Cotidiano - Sala de evento', type: TransactionType.EXPENSE },
-  // V. Cursos Técnicos
+
   { id: 'c_cur_1', name: 'V. Cursos Técnicos - Congresso', type: TransactionType.EXPENSE },
   { id: 'c_cur_2', name: 'V. Cursos Técnicos - Curso', type: TransactionType.EXPENSE },
   { id: 'c_cur_3', name: 'V. Cursos Técnicos - Eventos', type: TransactionType.EXPENSE },
   { id: 'c_cur_4', name: 'V. Cursos Técnicos - Mentoria', type: TransactionType.EXPENSE },
-  // V. Marketing
+
   { id: 'c_mkt_1', name: 'V. Marketing - Eletromídia', type: TransactionType.EXPENSE },
   { id: 'c_mkt_2', name: 'V. Marketing - Eventos Fisiocale', type: TransactionType.EXPENSE },
   { id: 'c_mkt_3', name: 'V. Marketing - Google', type: TransactionType.EXPENSE },
   { id: 'c_mkt_4', name: 'V. Marketing - Instagram', type: TransactionType.EXPENSE },
   { id: 'c_mkt_5', name: 'V. Marketing - Networking almoço/ café', type: TransactionType.EXPENSE },
-  // V. Funcionários
+
   { id: 'c_fun_1', name: 'V. Funcionários - Almoço', type: TransactionType.EXPENSE },
   { id: 'c_fun_2', name: 'V. Funcionários - Gratificações funcionários', type: TransactionType.EXPENSE },
   { id: 'c_fun_3', name: 'V. Funcionários - Reunião Fora', type: TransactionType.EXPENSE },
-  // V. Impostos Taxas
+
   { id: 'c_tax_1', name: 'V. Impostos Taxas - Crefito', type: TransactionType.EXPENSE },
   { id: 'c_tax_2', name: 'V. Impostos Taxas - Domínio/sítio web', type: TransactionType.EXPENSE },
   { id: 'c_tax_3', name: 'V. Impostos Taxas - Juros', type: TransactionType.EXPENSE },
@@ -123,368 +127,477 @@ const INITIAL_CATEGORIES: FinancialCategory[] = [
   { id: 'c_tax_7', name: 'V. Impostos Taxas - Taxas diversas', type: TransactionType.EXPENSE },
 ];
 
-// Helper to push to Supabase asynchronously without blocking UI
-const pushToSupabase = async (table: string, data: any) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return;
-  
-  try {
-    const payload = { ...data, user_id: session.user.id };
-    await supabase.from(table).upsert(payload);
-  } catch (err) {
-    console.error(`Failed to sync ${table} to Supabase:`, err);
+const getCurrentUserId = async (): Promise<string | null> => {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error('Erro ao buscar sessão do Supabase:', error.message);
+    return null;
+  }
+
+  return session?.user?.id ?? null;
+};
+
+const getConflictKey = (table: string) => {
+  return table === 'company_settings' ? 'user_id' : 'id';
+};
+
+const pushToSupabase = async (table: string, data: Record<string, any>) => {
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    console.warn(`Sync ignorado para ${table}: usuário não autenticado.`);
+    return;
+  }
+
+  const payload = {
+    ...data,
+    user_id: userId,
+  };
+
+  const { error } = await supabase
+    .from(table)
+    .upsert(payload, { onConflict: getConflictKey(table) });
+
+  if (error) {
+    console.error(`Erro ao sincronizar ${table} com Supabase:`, error.message, payload);
   }
 };
 
 const deleteFromSupabase = async (table: string, id: string) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return;
-  
-  try {
-    await supabase.from(table).delete().eq('id', id).eq('user_id', session.user.id);
-  } catch (err) {
-    console.error(`Failed to delete ${table} from Supabase:`, err);
+  const userId = await getCurrentUserId();
+
+  if (!userId) {
+    console.warn(`Delete ignorado para ${table}: usuário não autenticado.`);
+    return;
   }
+
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error(`Erro ao deletar ${table} no Supabase:`, error.message);
+  }
+};
+
+const pullTable = async <T extends Record<string, any>>(
+  table: string,
+  userId: string,
+  localStorageKey: string
+): Promise<T[]> => {
+  const { data, error } = await supabase
+    .from(table)
+    .select('*')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error(`Erro ao carregar ${table} do Supabase:`, error.message);
+    return [];
+  }
+
+  const cleanData = cleanRowsForLocalStorage((data ?? []) as T[]);
+  localStorage.setItem(localStorageKey, JSON.stringify(cleanData));
+
+  return cleanData as T[];
+};
+
+const saveArrayItem = <T extends { id: string }>(
+  key: string,
+  items: T[],
+  item: T
+) => {
+  const index = items.findIndex((currentItem) => currentItem.id === item.id);
+
+  if (index >= 0) {
+    items[index] = item;
+  } else {
+    items.push(item);
+  }
+
+  localStorage.setItem(key, JSON.stringify(items));
 };
 
 export const StorageService = {
   // --- Sync System ---
   syncFromSupabase: async (userId: string) => {
     try {
-      // Patients
-      const { data: patients } = await supabase.from('patients').select('*').eq('user_id', userId);
-      if (patients) localStorage.setItem('patients', JSON.stringify(patients));
+      await pullTable<Patient>('patients', userId, 'patients');
+      await pullTable<Appointment>('appointments', userId, 'appointments');
+      await pullTable<Transaction>('transactions', userId, 'transactions');
+      await pullTable<Service>('services', userId, 'services');
+      await pullTable<Professional>('professionals', userId, 'professionals');
+      await pullTable<WaitlistItem>('waitlist', userId, 'waitlist');
+      await pullTable<FinancialCategory>('categories', userId, 'financial_categories');
+      await pullTable<AppointmentTypeConfig>('appointment_types', userId, 'appointment_types');
+      await pullTable<AppointmentStatusConfig>('appointment_statuses', userId, 'appointment_statuses');
+      await pullTable<Invoice>('invoices', userId, 'invoices');
 
-      // Appointments
-      const { data: appointments } = await supabase.from('appointments').select('*').eq('user_id', userId);
-      if (appointments) localStorage.setItem('appointments', JSON.stringify(appointments));
+      const { data: companySettings, error: companySettingsError } = await supabase
+        .from('company_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-      // Transactions
-      const { data: transactions } = await supabase.from('transactions').select('*').eq('user_id', userId);
-      if (transactions) localStorage.setItem('transactions', JSON.stringify(transactions));
+      if (companySettingsError) {
+        console.error('Erro ao carregar company_settings:', companySettingsError.message);
+      }
 
-      // Services
-      const { data: services } = await supabase.from('services').select('*').eq('user_id', userId);
-      if (services) localStorage.setItem('services', JSON.stringify(services));
+      if (companySettings) {
+        const cleanSettings = removeUserId(companySettings);
+        localStorage.setItem('companySettings', JSON.stringify(cleanSettings));
+      }
 
-      // Professionals
-      const { data: professionals } = await supabase.from('professionals').select('*').eq('user_id', userId);
-      if (professionals) localStorage.setItem('professionals', JSON.stringify(professionals));
-
-      // Waitlist
-      const { data: waitlist } = await supabase.from('waitlist').select('*').eq('user_id', userId);
-      if (waitlist) localStorage.setItem('waitlist', JSON.stringify(waitlist));
-
-      // Categories
-      const { data: categories } = await supabase.from('categories').select('*').eq('user_id', userId);
-      if (categories) localStorage.setItem('financial_categories', JSON.stringify(categories));
-
-      // Appointment Types
-      const { data: apptTypes } = await supabase.from('appointment_types').select('*').eq('user_id', userId);
-      if (apptTypes) localStorage.setItem('appointment_types', JSON.stringify(apptTypes));
-
-      // Appointment Statuses
-      const { data: apptStatuses } = await supabase.from('appointment_statuses').select('*').eq('user_id', userId);
-      if (apptStatuses) localStorage.setItem('appointment_statuses', JSON.stringify(apptStatuses));
-
-      // Company Settings (pk is user_id)
-      const { data: companySettings } = await supabase.from('company_settings').select('*').eq('user_id', userId).single();
-      if (companySettings) localStorage.setItem('companySettings', JSON.stringify(companySettings));
-      
-      // Dispatch event so components can refresh
       window.dispatchEvent(new Event('supabase_sync_complete'));
     } catch (err) {
-      console.error('Error syncing from Supabase:', err);
+      console.error('Erro geral ao sincronizar dados do Supabase:', err);
     }
   },
 
   // --- Company Settings ---
   getCompanySettings: (): CompanySettings => {
-    const data = localStorage.getItem('companySettings');
-    return data ? JSON.parse(data) : { name: 'fisiocale', slogan: 'Software Cloud para Fisios', logoUrl: '' };
+    return safeParse<CompanySettings>('companySettings', {
+      name: 'fisiocale',
+      slogan: 'Software Cloud para Fisios',
+      logoUrl: '',
+    });
   },
+
   saveCompanySettings: (settings: CompanySettings) => {
-    localStorage.setItem('companySettings', JSON.stringify(settings));
-    pushToSupabase('company_settings', settings);
+    const finalSettings: CompanySettings = {
+      name: settings.name || 'fisiocale',
+      slogan: settings.slogan || '',
+      logoUrl: settings.logoUrl || '',
+    };
+
+    localStorage.setItem('companySettings', JSON.stringify(finalSettings));
+    void pushToSupabase('company_settings', finalSettings);
   },
 
   // --- Patients ---
   getPatients: (): Patient[] => {
-    const data = localStorage.getItem('patients');
-    return data ? JSON.parse(data) : [...INITIAL_PATIENTS];
+    return safeParse<Patient[]>('patients', []);
   },
 
   savePatient: (patient: Patient): Patient => {
     const patients = StorageService.getPatients();
-    const index = patients.findIndex(p => p.id === patient.id);
-    let savedPatient = { ...patient };
-    if (index >= 0) {
-      patients[index] = savedPatient;
-    } else {
-      savedPatient = { 
-        ...patient, 
-        id: patient.id || generateId(), 
-        createdAt: patient.createdAt || new Date().toISOString() 
-      };
-      patients.push(savedPatient);
-    }
-    localStorage.setItem('patients', JSON.stringify(patients));
-    pushToSupabase('patients', savedPatient);
+
+    const savedPatient: Patient = {
+      ...patient,
+      id: patient.id || generateId(),
+      createdAt: patient.createdAt || new Date().toISOString(),
+      status: patient.status || 'Ativo',
+    };
+
+    saveArrayItem('patients', patients, savedPatient);
+    void pushToSupabase('patients', savedPatient);
+
     return savedPatient;
+  },
+
+  deletePatient: (id: string) => {
+    const patients = StorageService.getPatients().filter((patient) => patient.id !== id);
+    localStorage.setItem('patients', JSON.stringify(patients));
+    void deleteFromSupabase('patients', id);
   },
 
   // --- Appointments ---
   getAppointments: (): Appointment[] => {
-    const data = localStorage.getItem('appointments');
-    return data ? JSON.parse(data) : [...INITIAL_APPOINTMENTS];
+    return safeParse<Appointment[]>('appointments', []);
   },
 
   saveAppointment: (appointment: Appointment) => {
-    const apps = StorageService.getAppointments();
-    const apptId = appointment.id || generateId();
-    const finalAppointment = { ...appointment, id: apptId };
+    const appointments = StorageService.getAppointments();
 
-    const index = apps.findIndex(a => a.id === apptId);
-    if (index >= 0) {
-      apps[index] = finalAppointment;
-    } else {
-      apps.push(finalAppointment);
-    }
-    localStorage.setItem('appointments', JSON.stringify(apps));
-    pushToSupabase('appointments', finalAppointment);
+    const finalAppointment: Appointment = {
+      ...appointment,
+      id: appointment.id || generateId(),
+      notes: appointment.notes || '',
+      price: Number(appointment.price || 0),
+      status: appointment.status || 'Agendado',
+    };
 
-    // Handle Transaction Logic based on status
+    saveArrayItem('appointments', appointments, finalAppointment);
+    void pushToSupabase('appointments', finalAppointment);
+
     const isCancelled = finalAppointment.status?.toLowerCase() === 'cancelado';
-    const trans = StorageService.getTransactions();
-    const existingTransIndex = trans.findIndex(t => t.appointmentId === apptId);
+    const transactions = StorageService.getTransactions();
+    const existingTransaction = transactions.find(
+      (transaction) => transaction.appointmentId === finalAppointment.id
+    );
 
     if (isCancelled) {
-      // Remove transaction if exists
-      if (existingTransIndex >= 0) {
-        StorageService.deleteTransaction(trans[existingTransIndex].id);
+      if (existingTransaction) {
+        StorageService.deleteTransaction(existingTransaction.id);
       }
+
+      return;
+    }
+
+    const transactionData = {
+      description: finalAppointment.type,
+      amount: Number(finalAppointment.price || 0),
+      type: TransactionType.INCOME,
+      date: finalAppointment.date,
+      category: 'Atendimentos',
+      patientId: finalAppointment.patientId,
+      appointmentId: finalAppointment.id,
+    };
+
+    if (existingTransaction) {
+      StorageService.saveTransaction({
+        ...existingTransaction,
+        ...transactionData,
+      });
     } else {
-      // Add or update transaction
-      const transData = {
-        description: finalAppointment.type,
-        amount: finalAppointment.price,
-        type: TransactionType.INCOME,
-        date: finalAppointment.date,
-        category: 'Atendimentos',
-        patientId: finalAppointment.patientId,
-        appointmentId: apptId
-      };
-      
-      if (existingTransIndex >= 0) {
-        StorageService.saveTransaction({
-          ...trans[existingTransIndex],
-          ...transData
-        });
-      } else {
-        StorageService.saveTransaction({
-          id: generateId(),
-          ...transData
-        });
-      }
+      StorageService.saveTransaction({
+        id: generateId(),
+        ...transactionData,
+      });
     }
   },
 
   deleteAppointment: (id: string) => {
-    const apps = StorageService.getAppointments().filter(a => a.id !== id);
-    localStorage.setItem('appointments', JSON.stringify(apps));
-    deleteFromSupabase('appointments', id);
-    
-    // Also delete associated transaction
-    const trans = StorageService.getTransactions();
-    const existingTrans = trans.find(t => t.appointmentId === id);
-    if (existingTrans) {
-      StorageService.deleteTransaction(existingTrans.id);
+    const appointments = StorageService.getAppointments().filter(
+      (appointment) => appointment.id !== id
+    );
+
+    localStorage.setItem('appointments', JSON.stringify(appointments));
+    void deleteFromSupabase('appointments', id);
+
+    const transactions = StorageService.getTransactions();
+    const existingTransaction = transactions.find(
+      (transaction) => transaction.appointmentId === id
+    );
+
+    if (existingTransaction) {
+      StorageService.deleteTransaction(existingTransaction.id);
     }
   },
 
   // --- Transactions ---
   getTransactions: (): Transaction[] => {
-    const data = localStorage.getItem('transactions');
-    return data ? JSON.parse(data) : [...INITIAL_TRANSACTIONS];
+    return safeParse<Transaction[]>('transactions', []);
   },
 
   saveTransaction: (transaction: Transaction) => {
-    const trans = StorageService.getTransactions();
-    const index = trans.findIndex(t => t.id === transaction.id);
-    if (index >= 0) {
-      trans[index] = transaction;
-    } else {
-      trans.push({ ...transaction, id: transaction.id || generateId() });
-    }
-    localStorage.setItem('transactions', JSON.stringify(trans));
-    pushToSupabase('transactions', transaction);
+    const transactions = StorageService.getTransactions();
+
+    const finalTransaction: Transaction = {
+      ...transaction,
+      id: transaction.id || generateId(),
+      amount: Number(transaction.amount || 0),
+      date: transaction.date || new Date().toISOString().slice(0, 10),
+      category: transaction.category || 'Sem categoria',
+    };
+
+    saveArrayItem('transactions', transactions, finalTransaction);
+    void pushToSupabase('transactions', finalTransaction);
+
+    return finalTransaction;
   },
 
   deleteTransaction: (id: string) => {
-    const trans = StorageService.getTransactions().filter(t => t.id !== id);
-    localStorage.setItem('transactions', JSON.stringify(trans));
-    deleteFromSupabase('transactions', id);
+    const transactions = StorageService.getTransactions().filter(
+      (transaction) => transaction.id !== id
+    );
+
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+    void deleteFromSupabase('transactions', id);
   },
 
   // --- Services ---
   getServices: (): Service[] => {
-    const data = localStorage.getItem('services');
-    return data ? JSON.parse(data) : [...INITIAL_SERVICES];
+    return safeParse<Service[]>('services', []);
   },
 
   saveService: (service: Service) => {
-    const items = StorageService.getServices();
-    const index = items.findIndex(s => s.id === service.id);
-    if (index >= 0) {
-      items[index] = service;
-    } else {
-      items.push({ ...service, id: service.id || generateId() });
-    }
-    localStorage.setItem('services', JSON.stringify(items));
-    pushToSupabase('services', service);
+    const services = StorageService.getServices();
+
+    const finalService: Service = {
+      ...service,
+      id: service.id || generateId(),
+      price: Number(service.price || 0),
+      duration: Number(service.duration || 0),
+    };
+
+    saveArrayItem('services', services, finalService);
+    void pushToSupabase('services', finalService);
+
+    return finalService;
   },
 
   deleteService: (id: string) => {
-    const items = StorageService.getServices().filter(s => s.id !== id);
-    localStorage.setItem('services', JSON.stringify(items));
-    deleteFromSupabase('services', id);
+    const services = StorageService.getServices().filter((service) => service.id !== id);
+    localStorage.setItem('services', JSON.stringify(services));
+    void deleteFromSupabase('services', id);
   },
 
   // --- Professionals ---
   getProfessionals: (): Professional[] => {
-    const data = localStorage.getItem('professionals');
-    return data ? JSON.parse(data) : [...INITIAL_PROFESSIONALS];
+    return safeParse<Professional[]>('professionals', []);
   },
 
   saveProfessional: (professional: Professional) => {
-    const items = StorageService.getProfessionals();
-    const index = items.findIndex(p => p.id === professional.id);
-    if (index >= 0) {
-      items[index] = professional;
-    } else {
-      items.push({ ...professional, id: professional.id || generateId() });
-    }
-    localStorage.setItem('professionals', JSON.stringify(items));
-    pushToSupabase('professionals', professional);
+    const professionals = StorageService.getProfessionals();
+
+    const finalProfessional: Professional = {
+      ...professional,
+      id: professional.id || generateId(),
+    };
+
+    saveArrayItem('professionals', professionals, finalProfessional);
+    void pushToSupabase('professionals', finalProfessional);
+
+    return finalProfessional;
   },
 
   deleteProfessional: (id: string) => {
-    const items = StorageService.getProfessionals().filter(p => p.id !== id);
-    localStorage.setItem('professionals', JSON.stringify(items));
-    deleteFromSupabase('professionals', id);
+    const professionals = StorageService.getProfessionals().filter(
+      (professional) => professional.id !== id
+    );
+
+    localStorage.setItem('professionals', JSON.stringify(professionals));
+    void deleteFromSupabase('professionals', id);
   },
-  
+
   // --- Waitlist ---
   getWaitlist: (): WaitlistItem[] => {
-    const data = localStorage.getItem('waitlist');
-    return data ? JSON.parse(data) : [...INITIAL_WAITLIST];
+    return safeParse<WaitlistItem[]>('waitlist', []);
   },
 
   saveWaitlistItem: (item: WaitlistItem) => {
-    const items = StorageService.getWaitlist();
-    const index = items.findIndex(i => i.id === item.id);
-    if (index >= 0) {
-      items[index] = item;
-    } else {
-      items.push({ ...item, id: item.id || generateId() });
-    }
-    localStorage.setItem('waitlist', JSON.stringify(items));
-    pushToSupabase('waitlist', item);
+    const waitlist = StorageService.getWaitlist();
+
+    const finalWaitlistItem: WaitlistItem = {
+      ...item,
+      id: item.id || generateId(),
+      createdAt: item.createdAt || new Date().toISOString(),
+    };
+
+    saveArrayItem('waitlist', waitlist, finalWaitlistItem);
+    void pushToSupabase('waitlist', finalWaitlistItem);
+
+    return finalWaitlistItem;
   },
 
   deleteWaitlistItem: (id: string) => {
-    const items = StorageService.getWaitlist().filter(i => i.id !== id);
-    localStorage.setItem('waitlist', JSON.stringify(items));
-    deleteFromSupabase('waitlist', id);
+    const waitlist = StorageService.getWaitlist().filter((item) => item.id !== id);
+    localStorage.setItem('waitlist', JSON.stringify(waitlist));
+    void deleteFromSupabase('waitlist', id);
   },
 
   // --- Invoices ---
   getInvoices: (): Invoice[] => {
-    const data = localStorage.getItem('invoices');
-    return data ? JSON.parse(data) : [];
+    return safeParse<Invoice[]>('invoices', []);
   },
 
   saveInvoice: (invoice: Invoice) => {
-    const items = StorageService.getInvoices();
-    const index = items.findIndex(i => i.id === invoice.id);
-    if (index >= 0) {
-      items[index] = invoice;
-    } else {
-      items.push({ ...invoice, id: invoice.id || generateId() });
-    }
-    localStorage.setItem('invoices', JSON.stringify(items));
-    pushToSupabase('invoices', invoice);
+    const invoices = StorageService.getInvoices();
+
+    const finalInvoice: Invoice = {
+      ...invoice,
+      id: invoice.id || generateId(),
+      amount: Number(invoice.amount || 0),
+      date: invoice.date || new Date().toISOString().slice(0, 10),
+      status: invoice.status || 'Emitida',
+    };
+
+    saveArrayItem('invoices', invoices, finalInvoice);
+    void pushToSupabase('invoices', finalInvoice);
+
+    return finalInvoice;
   },
 
   // --- Financial Categories ---
   getCategories: (): FinancialCategory[] => {
-    const data = localStorage.getItem('financial_categories');
-    return data ? JSON.parse(data) : [...INITIAL_CATEGORIES];
+    return safeParse<FinancialCategory[]>('financial_categories', INITIAL_CATEGORIES);
   },
 
   saveCategory: (category: FinancialCategory) => {
-    const items = StorageService.getCategories();
-    const index = items.findIndex(c => c.id === category.id);
-    if (index >= 0) {
-      items[index] = category;
-    } else {
-      items.push({ ...category, id: category.id || generateId() });
-    }
-    localStorage.setItem('financial_categories', JSON.stringify(items));
-    pushToSupabase('categories', category);
+    const categories = StorageService.getCategories();
+
+    const finalCategory: FinancialCategory = {
+      ...category,
+      id: category.id || generateId(),
+    };
+
+    saveArrayItem('financial_categories', categories, finalCategory);
+    void pushToSupabase('categories', finalCategory);
+
+    return finalCategory;
   },
 
   deleteCategory: (id: string) => {
-    const items = StorageService.getCategories().filter(c => c.id !== id);
-    localStorage.setItem('financial_categories', JSON.stringify(items));
-    deleteFromSupabase('categories', id);
+    const categories = StorageService.getCategories().filter(
+      (category) => category.id !== id
+    );
+
+    localStorage.setItem('financial_categories', JSON.stringify(categories));
+    void deleteFromSupabase('categories', id);
   },
 
   // --- Appointment Types ---
   getAppointmentTypes: (): AppointmentTypeConfig[] => {
-    const data = localStorage.getItem('appointment_types');
-    return data ? JSON.parse(data) : [...INITIAL_APPOINTMENT_TYPES];
+    return safeParse<AppointmentTypeConfig[]>('appointment_types', INITIAL_APPOINTMENT_TYPES);
   },
 
   saveAppointmentType: (type: AppointmentTypeConfig) => {
-    const items = StorageService.getAppointmentTypes();
-    const index = items.findIndex(t => t.id === type.id);
-    if (index >= 0) {
-      items[index] = type;
-    } else {
-      items.push({ ...type, id: type.id || generateId() });
-    }
-    localStorage.setItem('appointment_types', JSON.stringify(items));
-    pushToSupabase('appointment_types', type);
+    const appointmentTypes = StorageService.getAppointmentTypes();
+
+    const finalType: AppointmentTypeConfig = {
+      ...type,
+      id: type.id || generateId(),
+    };
+
+    saveArrayItem('appointment_types', appointmentTypes, finalType);
+    void pushToSupabase('appointment_types', finalType);
+
+    return finalType;
   },
 
   deleteAppointmentType: (id: string) => {
-    const items = StorageService.getAppointmentTypes().filter(t => t.id !== id);
-    localStorage.setItem('appointment_types', JSON.stringify(items));
-    deleteFromSupabase('appointment_types', id);
+    const appointmentTypes = StorageService.getAppointmentTypes().filter(
+      (type) => type.id !== id
+    );
+
+    localStorage.setItem('appointment_types', JSON.stringify(appointmentTypes));
+    void deleteFromSupabase('appointment_types', id);
   },
 
   // --- Appointment Statuses ---
   getAppointmentStatuses: (): AppointmentStatusConfig[] => {
-    const data = localStorage.getItem('appointment_statuses');
-    return data ? JSON.parse(data) : [...INITIAL_APPOINTMENT_STATUSES];
+    return safeParse<AppointmentStatusConfig[]>(
+      'appointment_statuses',
+      INITIAL_APPOINTMENT_STATUSES
+    );
   },
 
   saveAppointmentStatus: (status: AppointmentStatusConfig) => {
-    const items = StorageService.getAppointmentStatuses();
-    const index = items.findIndex(s => s.id === status.id);
-    if (index >= 0) {
-      items[index] = status;
-    } else {
-      items.push({ ...status, id: status.id || generateId() });
-    }
-    localStorage.setItem('appointment_statuses', JSON.stringify(items));
-    pushToSupabase('appointment_statuses', status);
+    const appointmentStatuses = StorageService.getAppointmentStatuses();
+
+    const finalStatus: AppointmentStatusConfig = {
+      ...status,
+      id: status.id || generateId(),
+    };
+
+    saveArrayItem('appointment_statuses', appointmentStatuses, finalStatus);
+    void pushToSupabase('appointment_statuses', finalStatus);
+
+    return finalStatus;
   },
 
   deleteAppointmentStatus: (id: string) => {
-    const items = StorageService.getAppointmentStatuses().filter(s => s.id !== id);
-    localStorage.setItem('appointment_statuses', JSON.stringify(items));
-    deleteFromSupabase('appointment_statuses', id);
-  }
+    const appointmentStatuses = StorageService.getAppointmentStatuses().filter(
+      (status) => status.id !== id
+    );
+
+    localStorage.setItem('appointment_statuses', JSON.stringify(appointmentStatuses));
+    void deleteFromSupabase('appointment_statuses', id);
+  },
 };
