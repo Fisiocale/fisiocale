@@ -5,6 +5,7 @@ import { LayoutDashboard, Users, DollarSign, Activity, Menu, X, Briefcase, Calen
 import { useAuth } from '../contexts/AuthContext';
 import { StorageService } from '../services/storageService';
 import { CompanySettings } from '../types';
+import { Logo } from './Logo';
 
 interface LayoutProps {
   children: ReactNode;
@@ -15,7 +16,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: 'fisiocale', slogan: 'Prevenção e Tratamento da Dor' });
+  const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: 'Fisiocale', slogan: 'Prevenção e Tratamento da Dor' });
 
   useEffect(() => {
     setCompanySettings(StorageService.getCompanySettings());
@@ -50,13 +51,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 h-full bg-white border-r border-slate-200 shadow-sm z-20">
         <div className="p-6 flex flex-col justify-center border-b border-slate-100">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             {companySettings.logoUrl ? (
               <img src={companySettings.logoUrl} alt="Logo" className="max-h-8 object-contain" />
             ) : (
-              <Users className="text-teal-400" size={28} />
+              <Logo size={40} />
             )}
-            <span className="text-3xl font-display font-medium tracking-tight text-teal-700 lowercase line-clamp-1">{companySettings.name}</span>
+            <span className="text-3xl font-display font-medium tracking-tight text-teal-700 line-clamp-1">{companySettings.name}</span>
           </div>
           {companySettings.slogan && (
             <span className="text-[9px] text-fisiocale-text mt-1 tracking-widest uppercase font-medium line-clamp-1">{companySettings.slogan}</span>
@@ -94,13 +95,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <aside className={`fixed top-0 left-0 w-64 h-full bg-white border-r border-slate-200 z-50 transform transition-transform duration-300 ease-in-out md:hidden ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-4 flex justify-between items-center border-b border-slate-100">
           <div className="flex flex-col">
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-2">
               {companySettings.logoUrl ? (
                 <img src={companySettings.logoUrl} alt="Logo" className="max-h-6 object-contain" />
               ) : (
-                <Users className="text-teal-400" size={20} />
+                <Logo size={28} />
               )}
-              <span className="text-xl font-display font-medium tracking-tight text-teal-700 lowercase line-clamp-1">{companySettings.name}</span>
+              <span className="text-xl font-display font-medium tracking-tight text-teal-700 line-clamp-1">{companySettings.name}</span>
             </div>
             {companySettings.slogan && (
               <span className="text-[7px] text-fisiocale-text mt-0.5 tracking-widest uppercase font-medium line-clamp-1">{companySettings.slogan}</span>

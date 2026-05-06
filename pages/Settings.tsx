@@ -199,28 +199,54 @@ const Settings: React.FC = () => {
                 placeholder="Ex: Saúde e Bem-estar"
               />
             </div>
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">URL do Logotipo (Opcional)</label>
-              <input 
-                type="url" 
-                value={companySettings.logoUrl} 
-                onChange={e => setCompanySettings({...companySettings, logoUrl: e.target.value})}
-                className="w-full border border-slate-200 p-2.5 rounded-lg mt-1 outline-none focus:ring-2 focus:ring-teal-500 text-slate-600"
-                placeholder="https://exemplo.com/logo.png"
-              />
-              <p className="text-xs text-slate-400 mt-1 italic">
-                Deixe em branco para usar o logotipo texto padrão. Você pode hospedar sua imagem em sites como Imgur e colar o link direto aqui.
-              </p>
-            </div>
             
-            {(companySettings.logoUrl || '') !== '' && (
-              <div className="pt-2">
-                <p className="text-xs font-bold text-slate-500 uppercase mb-2">Preview do Logo:</p>
-                <div className="p-3 border rounded-lg bg-slate-50 inline-block">
-                  <img src={companySettings.logoUrl} alt="Logo preview" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-off"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.05-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/></svg>' }} />
+            <div className="pt-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Logotipo da Clínica</label>
+              <div className="mt-2 flex items-start space-x-4">
+                {companySettings.logoUrl ? (
+                  <div className="relative group">
+                    <div className="w-20 h-20 border-2 border-slate-200 rounded-lg bg-slate-50 flex flex-col items-center justify-center p-2">
+                      <img src={companySettings.logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCompanySettings({...companySettings, logoUrl: ''})}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 flex items-center justify-center">
+                    <span className="text-[10px] text-slate-400 font-medium">Sem Logo</span>
+                  </div>
+                )}
+                
+                <div className="flex-1 mt-1">
+                  <label className="cursor-pointer border border-slate-200 rounded-lg px-4 py-2 hover:bg-slate-50 transition-colors inline-flex items-center text-sm font-medium text-slate-600 mb-2">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      className="hidden" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setCompanySettings({...companySettings, logoUrl: reader.result as string});
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    Escolher Imagem...
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    O logotipo será exibido no menu e nas telas de login. Recomendado: formatos quadrado ou horizontal com fundo transparente.
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
             
             <div className="pt-4 flex justify-end">
               <button 
