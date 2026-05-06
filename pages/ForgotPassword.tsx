@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
-import { Activity, Mail, Send, ArrowLeft, Users } from 'lucide-react';
+import { Activity, Mail, Send, ArrowLeft } from 'lucide-react';
+import { Logo } from '../components/Logo';
+import { StorageService } from '../services/storageService';
+import { CompanySettings } from '../types';
 
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: 'Fisiocale', slogan: 'Prevenção e Tratamento da Dor' });
+
+  useEffect(() => {
+    setCompanySettings(StorageService.getCompanySettings());
+  }, []);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,11 +40,15 @@ const ForgotPassword: React.FC = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex flex-col items-center justify-center mb-6">
-          <div className="flex items-center space-x-2">
-            <Users className="text-teal-400" size={40} />
-            <span className="text-4xl font-display font-medium tracking-tight text-teal-700 lowercase">fisiocale</span>
+          <div className="flex items-center space-x-3 mb-2">
+            {companySettings.logoUrl ? (
+              <img src={companySettings.logoUrl} alt="Logo" className="max-h-12 object-contain" />
+            ) : (
+              <Logo size={48} />
+            )}
+            <span className="text-4xl font-display font-medium tracking-tight text-teal-700">{companySettings.name}</span>
           </div>
-          <span className="text-[10px] text-fisiocale-text mt-1 tracking-widest uppercase font-medium">Prevenção e Tratamento da Dor</span>
+          <span className="text-[10px] text-fisiocale-text mt-1 tracking-widest uppercase font-medium">{companySettings.slogan}</span>
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900">
           Recuperar Senha
