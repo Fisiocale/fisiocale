@@ -41,6 +41,12 @@ const cleanRowsForLocalStorage = <T extends Record<string, any>>(rows: T[]) => {
   return rows.map(removeUserId);
 };
 
+const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
+  name: 'Fisiocale',
+  slogan: 'Software Cloud para Fisios',
+  logoUrl: '',
+};
+
 const INITIAL_APPOINTMENT_TYPES: AppointmentTypeConfig[] = [
   { id: 'at1', name: 'Tasks', color: '#e06666' },
   { id: 'at2', name: 'Atendimentos', color: '#6fa8dc' },
@@ -58,6 +64,51 @@ const INITIAL_APPOINTMENT_STATUSES: AppointmentStatusConfig[] = [
   { id: 'as2', name: 'Realizado', color: '#10b981' },
   { id: 'as3', name: 'Cancelado', color: '#ef4444' },
   { id: 'as4', name: 'Faltou', color: '#991b1b' },
+];
+
+const INITIAL_SERVICES: Service[] = [
+  {
+    id: 's1',
+    name: 'Consulta Médica',
+    description: 'Atendimento clínico geral',
+    price: 250,
+    duration: 30,
+  },
+  {
+    id: 's2',
+    name: 'Avaliação Fisioterapêutica',
+    description: 'Análise inicial e diagnóstico funcional',
+    price: 200,
+    duration: 60,
+  },
+  {
+    id: 's3',
+    name: 'Sessão de Fisioterapia',
+    description: 'Reabilitação e tratamento',
+    price: 150,
+    duration: 45,
+  },
+];
+
+const INITIAL_PROFESSIONALS: Professional[] = [
+  {
+    id: 'prof1',
+    name: 'Dr. Roberto Santos',
+    specialty: 'Ortopedista',
+    email: 'roberto@clinic.com',
+    phone: '11911111111',
+    registrationNumber: 'CRM 123456',
+    color: '#0ea5e9',
+  },
+  {
+    id: 'prof2',
+    name: 'Dra. Camila Lima',
+    specialty: 'Fisioterapeuta',
+    email: 'camila@clinic.com',
+    phone: '11922222222',
+    registrationNumber: 'CREFITO 98765',
+    color: '#8b5cf6',
+  },
 ];
 
 const INITIAL_CATEGORIES: FinancialCategory[] = [
@@ -207,6 +258,97 @@ const pullTable = async <T extends Record<string, any>>(
   return cleanData as T[];
 };
 
+const seedTableIfEmpty = async <T extends { id: string } & Record<string, any>>(
+  table: string,
+  userId: string,
+  localStorageKey: string,
+  defaultRows: T[]
+): Promise<T[]> => {
+  const { data, error } = await supabase
+    .from(table)
+    .select('*')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error(`Erro ao carregar ${table} para seed:`, error.message);
+    return safeParse<T[]>(localStorageKey, defaultRows);
+  }
+
+  if (data && data.length > 0) {
+    const cleanData = cleanRowsForLocalStorage(data as Record<string, any>[]) as T[];
+    localStorage.setItem(localStorageKey, JSON.stringify(cleanData));
+    return cleanData;
+  }
+
+  const rowsToCreate = defaultRows.map((row) => ({
+    ...row,
+    id: generateId(),
+    user_id: userId,
+  }));
+
+  const { data: createdRows, error: seedError } = await supabase
+    .from(table)
+    .insert(rowsToCreate)
+    .select('*');
+
+  if (seedError) {
+    console.error(`Erro ao criar parâmetros padrão em ${table}:`, seedError.message, rowsToCreate);
+    localStorage.setItem(localStorageKey, JSON.stringify(defaultRows));
+    return defaultRows;
+  }
+
+  const cleanCreatedRows = cleanRowsForLocalStorage(
+    (createdRows ?? rowsToCreate) as Record<string, any>[]
+  ) as T[];
+
+  localStorage.setItem(localStorageKey, JSON.stringify(cleanCreatedRows));
+  return cleanCreatedRows;
+};
+
+const syncCompanySettings = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('company_settings')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Erro ao carregar company_settings:', error.message);
+    localStorage.setItem('companySettings', JSON.stringify(DEFAULT_COMPANY_SETTINGS));
+    return;
+  }
+
+  if (data) {
+    const cleanSettings = removeUserId(data) as CompanySettings;
+    localStorage.setItem('companySettings', JSON.stringify(cleanSettings));
+    return;
+  }
+
+  const { data: createdSettings, error: seedError } = await supabase
+    .from('company_settings')
+    .upsert(
+      {
+        ...DEFAULT_COMPANY_SETTINGS,
+        user_id: userId,
+      },
+      { onConflict: 'user_id' }
+    )
+    .select('*')
+    .maybeSingle();
+
+  if (seedError) {
+    console.error('Erro ao criar company_settings padrão:', seedError.message);
+    localStorage.setItem('companySettings', JSON.stringify(DEFAULT_COMPANY_SETTINGS));
+    return;
+  }
+
+  const cleanSettings = createdSettings
+    ? (removeUserId(createdSettings) as CompanySettings)
+    : DEFAULT_COMPANY_SETTINGS;
+
+  localStorage.setItem('companySettings', JSON.stringify(cleanSettings));
+};
+
 const saveArrayItem = <T extends { id: string }>(
   key: string,
   items: T[],
@@ -227,31 +369,21 @@ export const StorageService = {
   // --- Sync System ---
   syncFromSupabase: async (userId: string) => {
     try {
+      // Dados operacionais: nunca criar mocks/fakes automaticamente.
       await pullTable<Patient>('patients', userId, 'patients');
       await pullTable<Appointment>('appointments', userId, 'appointments');
       await pullTable<Transaction>('transactions', userId, 'transactions');
-      await pullTable<Service>('services', userId, 'services');
-      await pullTable<Professional>('professionals', userId, 'professionals');
       await pullTable<WaitlistItem>('waitlist', userId, 'waitlist');
-      await pullTable<FinancialCategory>('categories', userId, 'financial_categories');
-      await pullTable<AppointmentTypeConfig>('appointment_types', userId, 'appointment_types');
-      await pullTable<AppointmentStatusConfig>('appointment_statuses', userId, 'appointment_statuses');
       await pullTable<Invoice>('invoices', userId, 'invoices');
 
-      const { data: companySettings, error: companySettingsError } = await supabase
-        .from('company_settings')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Parâmetros: criar padrões automaticamente para usuário novo.
+      await seedTableIfEmpty<Service>('services', userId, 'services', INITIAL_SERVICES);
+      await seedTableIfEmpty<Professional>('professionals', userId, 'professionals', INITIAL_PROFESSIONALS);
+      await seedTableIfEmpty<FinancialCategory>('categories', userId, 'financial_categories', INITIAL_CATEGORIES);
+      await seedTableIfEmpty<AppointmentTypeConfig>('appointment_types', userId, 'appointment_types', INITIAL_APPOINTMENT_TYPES);
+      await seedTableIfEmpty<AppointmentStatusConfig>('appointment_statuses', userId, 'appointment_statuses', INITIAL_APPOINTMENT_STATUSES);
 
-      if (companySettingsError) {
-        console.error('Erro ao carregar company_settings:', companySettingsError.message);
-      }
-
-      if (companySettings) {
-        const cleanSettings = removeUserId(companySettings);
-        localStorage.setItem('companySettings', JSON.stringify(cleanSettings));
-      }
+      await syncCompanySettings(userId);
 
       window.dispatchEvent(new Event('supabase_sync_complete'));
     } catch (err) {
@@ -261,16 +393,12 @@ export const StorageService = {
 
   // --- Company Settings ---
   getCompanySettings: (): CompanySettings => {
-    return safeParse<CompanySettings>('companySettings', {
-      name: 'fisiocale',
-      slogan: 'Software Cloud para Fisios',
-      logoUrl: '',
-    });
+    return safeParse<CompanySettings>('companySettings', DEFAULT_COMPANY_SETTINGS);
   },
 
   saveCompanySettings: (settings: CompanySettings) => {
     const finalSettings: CompanySettings = {
-      name: settings.name || 'fisiocale',
+      name: settings.name || DEFAULT_COMPANY_SETTINGS.name,
       slogan: settings.slogan || '',
       logoUrl: settings.logoUrl || '',
     };
@@ -320,6 +448,7 @@ export const StorageService = {
       notes: appointment.notes || '',
       price: Number(appointment.price || 0),
       status: appointment.status || 'Agendado',
+      type: appointment.type || 'Atendimento',
     };
 
     saveArrayItem('appointments', appointments, finalAppointment);
@@ -340,7 +469,7 @@ export const StorageService = {
     }
 
     const transactionData = {
-      description: finalAppointment.type,
+      description: finalAppointment.type || 'Atendimento',
       amount: Number(finalAppointment.price || 0),
       type: TransactionType.INCOME,
       date: finalAppointment.date,
@@ -391,6 +520,7 @@ export const StorageService = {
     const finalTransaction: Transaction = {
       ...transaction,
       id: transaction.id || generateId(),
+      description: transaction.description || '',
       amount: Number(transaction.amount || 0),
       date: transaction.date || new Date().toISOString().slice(0, 10),
       category: transaction.category || 'Sem categoria',
@@ -413,7 +543,7 @@ export const StorageService = {
 
   // --- Services ---
   getServices: (): Service[] => {
-    return safeParse<Service[]>('services', []);
+    return safeParse<Service[]>('services', INITIAL_SERVICES);
   },
 
   saveService: (service: Service) => {
@@ -422,6 +552,7 @@ export const StorageService = {
     const finalService: Service = {
       ...service,
       id: service.id || generateId(),
+      description: service.description || '',
       price: Number(service.price || 0),
       duration: Number(service.duration || 0),
     };
@@ -440,7 +571,7 @@ export const StorageService = {
 
   // --- Professionals ---
   getProfessionals: (): Professional[] => {
-    return safeParse<Professional[]>('professionals', []);
+    return safeParse<Professional[]>('professionals', INITIAL_PROFESSIONALS);
   },
 
   saveProfessional: (professional: Professional) => {
@@ -449,6 +580,11 @@ export const StorageService = {
     const finalProfessional: Professional = {
       ...professional,
       id: professional.id || generateId(),
+      specialty: professional.specialty || '',
+      email: professional.email || '',
+      phone: professional.phone || '',
+      registrationNumber: professional.registrationNumber || '',
+      color: professional.color || '#0ea5e9',
     };
 
     saveArrayItem('professionals', professionals, finalProfessional);
@@ -512,6 +648,12 @@ export const StorageService = {
     void pushToSupabase('invoices', finalInvoice);
 
     return finalInvoice;
+  },
+
+  deleteInvoice: (id: string) => {
+    const invoices = StorageService.getInvoices().filter((invoice) => invoice.id !== id);
+    localStorage.setItem('invoices', JSON.stringify(invoices));
+    void deleteFromSupabase('invoices', id);
   },
 
   // --- Financial Categories ---
